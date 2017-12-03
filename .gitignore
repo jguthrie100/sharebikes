@@ -14,6 +14,7 @@
 !/tmp/.keep
 
 /config/database.yml
+/public/bike_data/*
 
 /node_modules
 /yarn-error.log
