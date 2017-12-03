@@ -1,5 +1,6 @@
 require 'factory_bot_rails'
 require 'webmock/rspec'
+require 'database_cleaner'
 
 WebMock.disable_net_connect!(allow_localhost: true)
 
