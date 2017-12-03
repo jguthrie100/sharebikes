@@ -4,7 +4,7 @@ class DockingStation < ApplicationRecord
   has_many :journey_starts, class_name: 'Journey', foreign_key: :start_dock
   has_many :journey_ends, class_name: 'Journey', foreign_key: :end_dock
 
-  before_save :set_coords
+  before_save :create_api_data # Check if api_data needs to be updated (i.e. if its not been set already)
 
   validates :id, :title, presence: true
   validates :num_docks, numericality: {greater_than_or_equal_to: 0, allow_nil: true}
@@ -13,13 +13,27 @@ class DockingStation < ApplicationRecord
     Journey.where("start_dock_id = ? OR end_dock_id = ?", self.id, self.id)
   end
 
-  def set_coords
-    if self.latlng.nil? || self.num_docks.nil?
+  def create_api_data
+    begin
+      update_api_data(false, false)
+    rescue IOError => e
+      puts "Tried to update Docking Station coords, but an Error was raised"
+      p e
+    end
+  end
+
+  def update_api_data(force_update = true, with_save = true)
+    if force_update || (self.latlng.nil? || self.num_docks.nil?)
       api_uri = "https://api.tfl.gov.uk/BikePoint/BikePoints_#{self.id}"
 
-      dock_data = ActiveSupport::JSON.decode(Net::HTTP.get(URI(api_uri)))
+      res = Net::HTTP.get_response(URI(api_uri))
+      dock_data = ActiveSupport::JSON.decode(res.body)
 
-      self.latlng = "(#{dock_data["lat"]}, #{dock_data["lon"]})"
+      if res.code.to_i != 200
+        raise IOError, "HTTPError #{res.code} - #{dock_data["message"]}"
+      end
+
+      self.latlng = "(#{dock_data["lon"]}, #{dock_data["lat"]})"
 
       if dock_data["additionalProperties"][8]["key"].eql? "NbDocks"
         self.num_docks = dock_data["additionalProperties"][8]["value"]
@@ -31,6 +45,10 @@ class DockingStation < ApplicationRecord
           end
         end
       end
+    end
+
+    if with_save
+      self.save!
     end
   end
 end
