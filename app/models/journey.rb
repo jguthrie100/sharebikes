@@ -2,6 +2,7 @@ require 'csv'
 require 'open-uri'
 require 'date'
 require 'activerecord-import'
+require 'geokit'
 
 class Journey < ApplicationRecord
   belongs_to :bike, inverse_of: :journeys
@@ -12,6 +13,22 @@ class Journey < ApplicationRecord
 
   def docking_stations
     DockingStation.where(id: [self.start_dock_id, self.end_dock_id])
+  end
+
+  def calc_distance
+    return nil if self.start_dock.latlng.blank? || self.end_dock.latlng.blank?
+    start_point = Geokit::LatLng.new(self.start_dock.latlng.x, self.start_dock.latlng.y)
+    end_point = Geokit::LatLng.new(self.end_dock.latlng.x, self.end_dock.latlng.y)
+
+    return start_point.distance_to(end_point) * 1.61
+  end
+
+  def self.calc_distance(start_latlng, end_latlng)
+    return nil if start_latlng.blank? || end_latlng.blank?
+    start_point = Geokit::LatLng.new(start_latlng[0], start_latlng[1])
+    end_point = Geokit::LatLng.new(end_latlng[0], end_latlng[1])
+
+    return start_point.distance_to(end_point) * 1.61
   end
 
   # Imports a CSV of Santander Bike journeys
@@ -76,25 +93,26 @@ class Journey < ApplicationRecord
               [start_dock_id, end_dock_id].each do |dock_id|
                 next if missing_docks.include? dock_id
                 if docks[dock_id].num_docks.blank? || docks[dock_id].latlng.blank?
-                  docks[dock_id].update_api_data(true, true)
-                  ##
-                  ## TODO - Make a more specific error handler here that specifically catches 404 error
-                  ##         from update_api_data (so we can still continue, just without saving Geo data)
-                  ##
+                  
+                  begin
+                    docks[dock_id].update_api_data(true, true)
+                  rescue IOError => e
+                    if e.message.include?("The following bike point id is not recognised")
+                      missing_docks.push(/BikePoints_(\d*)&/.match(e.message)[1].to_i)
+                      p missing_docks
+                    end
+                    puts e.message
+                    break
+                  end
                 end
               end
 
-        ##
-        ## TODO - Work out distance from start_point to end_point
-        ##      - Add it to Journey object & update Bike.km_travelled
-        ##
-        distance = 0
+              distance = calc_distance(docks[start_dock_id].latlng.to_a.reverse, docks[end_dock_id].latlng.to_a.reverse)
+              bikes[bike_id][1] += distance.to_f
+
               journeys[journey_id] = journeys[journey_id] || [journey_id, start_time, end_time, duration, bike_id, start_dock_id, end_dock_id, distance]
 
             rescue Exception => e
-              if e.message.include?("The following bike point id is not recognised")
-                missing_docks.push(e.message.split("_")[1].to_i)
-              end
               puts "Error: #{e.message}"
               errors.push e
             end
