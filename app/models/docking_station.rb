@@ -1,10 +1,10 @@
 require 'net/http'
 
 class DockingStation < ApplicationRecord
-  has_many :journey_starts, class_name: 'Journey', foreign_key: :start_dock
-  has_many :journey_ends, class_name: 'Journey', foreign_key: :end_dock
+  has_many :journey_starts, class_name: 'Journey', inverse_of: :start_dock
+  has_many :journey_ends, class_name: 'Journey', inverse_of: :end_dock
 
-  before_save :create_api_data # Check if api_data needs to be updated (i.e. if its not been set already)
+  #before_save :save_api_data # Check if api_data needs to be updated (i.e. if its not been set already)
 
   validates :id, :title, presence: true
   validates :num_docks, numericality: {greater_than_or_equal_to: 0, allow_nil: true}
@@ -13,7 +13,7 @@ class DockingStation < ApplicationRecord
     Journey.where("start_dock_id = ? OR end_dock_id = ?", self.id, self.id)
   end
 
-  def create_api_data
+  def save_api_data
     begin
       update_api_data(false, false)
     rescue IOError => e
@@ -30,6 +30,7 @@ class DockingStation < ApplicationRecord
       dock_data = ActiveSupport::JSON.decode(res.body)
 
       if res.code.to_i != 200
+        self.save! if with_save
         raise IOError, "HTTPError #{res.code} - #{dock_data["message"]}"
       end
 
@@ -49,6 +50,38 @@ class DockingStation < ApplicationRecord
 
     if with_save
       self.save!
+    end
+  end
+
+  def self.add_docking_stations
+    api_uri = "https://api.tfl.gov.uk/BikePoint"
+
+    res = Net::HTTP.get_response(URI(api_uri))
+    docks_data = ActiveSupport::JSON.decode(res.body)
+
+    if res.code.to_i != 200
+      raise IOError, "HTTPError #{res.code} - #{docks_data["message"]}"
+    end
+
+    docks_data.each do |dock_data|
+      dock_id = dock_data["id"].sub("BikePoints_", "").to_i
+
+      dock = DockingStation.find_or_initialize_by(id: dock_id)
+
+      dock.title = dock_data["commonName"]
+      dock.latlng = "(#{dock_data["lon"]}, #{dock_data["lat"]})"
+
+      if dock_data["additionalProperties"][8]["key"].eql? "NbDocks"
+        dock.num_docks = dock_data["additionalProperties"][8]["value"]
+      else
+        dock_data["additionalProperties"].each do |d|
+          if d["key"].eql? "NbDocks"
+            dock.num_docks = d["value"]
+            break
+          end
+        end
+      end
+      dock.save!
     end
   end
 end

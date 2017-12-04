@@ -33,16 +33,16 @@ ActiveRecord::Schema.define(version: 20171203023827) do
     t.datetime "start_time", null: false
     t.datetime "end_time", null: false
     t.integer "duration"
-    t.integer "bike", null: false
-    t.integer "start_dock", null: false
-    t.integer "end_dock", null: false
+    t.bigint "bike_id"
+    t.bigint "start_dock_id"
+    t.bigint "end_dock_id"
     t.float "distance"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["bike"], name: "index_journeys_on_bike"
-    t.index ["end_dock"], name: "index_journeys_on_end_dock"
+    t.index ["bike_id"], name: "index_journeys_on_bike_id"
+    t.index ["end_dock_id"], name: "index_journeys_on_end_dock_id"
     t.index ["end_time"], name: "index_journeys_on_end_time"
-    t.index ["start_dock"], name: "index_journeys_on_start_dock"
+    t.index ["start_dock_id"], name: "index_journeys_on_start_dock_id"
     t.index ["start_time"], name: "index_journeys_on_start_time"
   end
 
