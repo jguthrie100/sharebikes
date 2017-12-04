@@ -53,6 +53,9 @@ class DockingStation < ApplicationRecord
     end
   end
 
+  ##
+  ## TODO - Update to use activerecord-import BULK import method to speed this up
+  ##
   def self.add_docking_stations
     api_uri = "https://api.tfl.gov.uk/BikePoint"
 
