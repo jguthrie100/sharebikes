@@ -35,9 +35,10 @@ class Journey < ApplicationRecord
   def self.import_csv(opts)
 
     filename = opts[:filename]
+    bulk_upload = opts[:bulk_upload]
     update_all_docks = opts[:update_all_docks]
 
-    return 0 if filename.blank?
+    return 0 if filename.blank? && bulk_upload.blank?
 
     errors = Array.new
     missing_docks = []
@@ -49,8 +50,16 @@ class Journey < ApplicationRecord
     ## TODO - Import json file containing ALL the CSV files, and then loop through it,
     ##        loading data from ALL CSV files
     ##
-    csv_filenames = [filename]
+
+    if bulk_upload
+      csv_filenames = ActiveSupport::JSON.decode(open("http://cycling.data.tfl.gov.uk/usage-stats/cycling-load.json").read)["entries"]
+      csv_filenames.map! {|c| c["url"].sub(/s3:\/\//, "http://").gsub(/ /, "%20")}
+    else
+      csv_filenames = [filename]
+    end
+
     csv_filenames.each do |filename|
+      puts "Loading Journey data from #{filename}"
       catch :nextfile do
 
         bikes = Hash.new
@@ -99,7 +108,6 @@ class Journey < ApplicationRecord
                   rescue IOError => e
                     if e.message.include?("The following bike point id is not recognised")
                       missing_docks.push(/BikePoints_(\d*)&/.match(e.message)[1].to_i)
-                      p missing_docks
                     end
                     puts e.message
                     break
