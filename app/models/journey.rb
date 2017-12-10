@@ -134,13 +134,13 @@ class Journey < ApplicationRecord
         bikes.each do |k,v|
           bike_values.push(v)
         end
-        Bike.import bike_columns, bike_values, :validate => false, :batch_size => 10000, on_duplicate_key_update: [:km_travelled]
+        Bike.import bike_columns, bike_values, :validate => false, :batch_size => 20000, on_duplicate_key_update: [:km_travelled]
 
         journey_values = Array.new
         journeys.each do |k, v|
           journey_values.push(v)
         end
-        Journey.import journey_columns, journey_values, :validate => false, :batch_size => 10000, on_duplicate_key_ignore: true
+        Journey.import journey_columns, journey_values, :validate => false, :batch_size => 20000, on_duplicate_key_ignore: true
       end
     end
   end

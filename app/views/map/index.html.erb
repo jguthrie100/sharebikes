@@ -1,0 +1,53 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.css" />
+<script type="text/javascript" src="http://maps.stamen.com/js/tile.stamen.js?v1.3.0"></script>
+
+<div id="map" style="width:800px;height:600px"></div>
+
+<script>
+    map = L.map('map', { center: [51.509865, -0.138092], zoom: 10});
+
+    L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+        attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
+        id: 'mapbox.streets',
+        accessToken: 'pk.eyJ1Ijoiamd1dGhyaWUxMDAiLCJhIjoiY2phenRtMHlpMWxodzMycWtha3A5YTFybyJ9.cgZGmQOusUaDQppoSZTnCQ'
+    }).addTo(map);
+
+    var journeys = {};
+
+    <% @journeys.each do |start_time, journeys| %>
+        journeys["<%= start_time %>"] = [];
+        <% journeys.each do |journey| %>
+            <% unless journey[2].blank? || journey[3].blank? %>
+               journeys["<%= start_time %>"].push(["<%= journey[0] %>", "<%= journey[1] %>", "<%= journey[2] %>", "<%= journey[3] %>"]);
+            <% end %>
+        <% end %>
+    <% end %>
+
+    console.log(journeys);
+    var i = 0;
+    var interval = setInterval(function(){ display_journeys(i++) }, 1000);
+
+    function display_journeys(i) {
+        var key = Object.keys(journeys).sort()[i];
+        if(key == undefined) {
+            clearInterval(interval);
+            return
+        }
+
+        for(var i = 0; i < journeys[key].length; i++) {
+            var circle = L.circle(journeys[key][i][2].split(", "), {
+                color: '#f00',
+                fillColor: '#f00',
+                fillOpacity: 0.5,
+                opacity: 0.5,
+                weight: 0,
+                radius: 200
+            }).addTo(map);
+        } 
+    }
+
+    function calculate_bike_pos(current_time, journey) {
+        
+    }
+</script>

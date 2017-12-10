@@ -16,6 +16,11 @@ class DockingStation < ApplicationRecord
     Journey.where("start_dock_id = ? OR end_dock_id = ?", self.id, self.id)
   end
 
+  def latlng_str
+    return "" if self.latlng.nil?
+    return "#{self.latlng.y}, #{self.latlng.x}"
+  end
+
   def save_api_data
     begin
       update_api_data(false, false)
