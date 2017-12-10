@@ -83,4 +83,12 @@ RSpec.describe DockingStation, :type => :model do
       end
     end
   end
+
+  describe ".latlng_str" do
+    let(:dock) { FactoryBot.create :docking_station_with_coords }
+    
+    it "returns the coords in string format" do
+      expect(dock.latlng_str).to eq("51.609865, -0.118092")
+    end
+  end
 end
